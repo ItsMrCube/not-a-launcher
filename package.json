@@ -1,0 +1,13 @@
+{
+  "type": "module",
+  "name": "modrinth-bulk",
+  "dependencies": {
+    "@sapphire/ts-config": "3.3.4",
+    "typescript": "4.8.4",
+    "undici": "5.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "18.11.9"
+  },
+  "packageManager": "yarn@3.2.4"
+}

@@ -1,0 +1,9 @@
+{
+  "extends": "@sapphire/ts-config/extra-strict",
+  "compilerOptions": {
+    "module": "ESNext",
+    "outDir": "dist",
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*"]
+}

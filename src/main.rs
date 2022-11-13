@@ -3,32 +3,47 @@ use std::fs;
 
 fn main() {
     // Get config
-    let slice = fs::read("config/mods.json").unwrap();
-    let cfg: Config = serde_json::from_slice(slice.as_slice()).unwrap();
+    let config: Config = {
+        let slice = fs::read("config/mods.json").unwrap();
+        serde_json::from_slice(slice.as_slice()).unwrap()
+    };
 
     // Empty dir
-    fs::read_dir(&cfg.dir).unwrap().for_each(|entry| {
-        fs::remove_file(entry.unwrap().path()).unwrap();
-    });
+    {
+        fs::read_dir(&config.dir).unwrap().for_each(|entry| {
+            fs::remove_file(entry.unwrap().path()).unwrap();
+        });
+    }
 
     // Download mods
-    for m in &cfg.mods {
-        let url = format!("https://api.modrinth.com/v2/project/{}/version", m);
+    let mut i = 1;
 
-        let versions: Vec<Version> = reqwest::blocking::get(url).unwrap().json().unwrap();
+    for m in &config.mods {
+        let version_url = format!("https://api.modrinth.com/v2/project/{}/version", m);
+        let versions: Vec<Version> = reqwest::blocking::get(&version_url)
+            .unwrap()
+            .json()
+            .unwrap();
         let version = &versions[0];
 
-        let file_info = version.files.iter().find(|f| f.primary).unwrap();
+        let file_info = &version.files.iter().find(|f| f.primary).unwrap();
 
         let file = reqwest::blocking::get(&file_info.url)
             .unwrap()
             .bytes()
             .unwrap();
 
-        let path = format!("{}/{}", &cfg.dir, &file_info.filename);
-        fs::write(path, file.to_vec().as_slice()).unwrap();
+        let path = format!("{}/{}", &config.dir, &file_info.filename);
+        fs::write(&path, &file.to_vec().as_slice()).unwrap();
 
-        println!("Downloaded {}", &version.name);
+        println!(
+            "[{}/{}] Downloaded {}",
+            i,
+            &config.mods.len(),
+            &version.name
+        );
+
+        i += 1;
     }
 }
 

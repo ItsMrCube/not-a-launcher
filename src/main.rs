@@ -1,59 +1,70 @@
-use serde::Deserialize;
-use std::fs;
+use std::{error::Error, fs, path::Path};
 
-fn main() {
-    // Get config
+use serde::Deserialize;
+
+fn main() -> Result<(), Box<dyn Error>> {
     let config: Config = {
-        let slice = fs::read("config/mods.json").unwrap();
-        serde_json::from_slice(slice.as_slice()).unwrap()
+        let file = fs::read("config/mods.json")?;
+        serde_json::from_slice(file.as_slice())?
     };
 
     // Empty dir
-    {
-        fs::read_dir(&config.dir).unwrap().for_each(|entry| {
-            fs::remove_file(entry.unwrap().path()).unwrap();
-        });
+    for dir in ["mods", "resourcepacks", "shaderpacks"] {
+        let path = Path::new(&config.dir).join(dir);
+
+        fs::remove_dir_all(&path).ok();
+
+        fs::create_dir(&path).ok();
     }
 
-    let mut mods = vec![];
+    let mut i = 0;
 
-    // Fetch mods
-    for m in &config.mods {
-        let version_url = format!("https://api.modrinth.com/v2/project/{}/version", m);
-        let versions: Vec<Version> = reqwest::blocking::get(&version_url)
-            .unwrap()
-            .json()
+    // Download mods
+    for mod_name in &config.mods {
+        let version_url = format!("https://api.modrinth.com/v2/project/{mod_name}/version");
+        let versions: Vec<Version> = reqwest::blocking::get(&version_url)?.json()?;
+        let url = &versions[0]
+            .files
+            .iter()
+            .find(|v| v.primary)
+            .map(|v| &v.url)
             .unwrap();
 
-        let version = &versions[0];
-
-        let file_info = &version.files.iter().find(|f| f.primary).unwrap();
-
-        mods.push(reqwest::blocking::get(&file_info.url).unwrap());
-    }
-
-    // Fetch raw mods
-    for m in &config.raw_mods {
-        mods.push(reqwest::blocking::get(m).unwrap());
-    }
-
-    // Write mods
-    let mut i = 0;
-    for m in mods {
-        let path = format!("{}/{}.jar", &config.dir, &i.to_string());
-
-        fs::write(&path, &m.bytes().unwrap().to_vec().as_slice()).unwrap();
+        write(format!("{}/mods/{}.jar", &config.dir, &i), &url)?;
 
         i += 1;
     }
 
-    println!("Downloaded {} mods.", i);
+    for url in &config.resourcepacks {
+        write(format!("{}/resourcepacks/{}.zip", &config.dir, &i), &url)?;
+
+        i += 1;
+    }
+
+    for url in &config.shaderpacks {
+        write(format!("{}/shaderpacks/{}.zip", &config.dir, &i), &url)?;
+
+        i += 1;
+    }
+
+    Ok(())
+}
+
+fn write(path: String, url: &str) -> Result<(), Box<dyn Error>> {
+    let mut response = reqwest::blocking::get(url)?;
+
+    let mut file = fs::File::create(path)?;
+
+    std::io::copy(&mut response, &mut file)?;
+
+    Ok(())
 }
 
 #[derive(Deserialize)]
 struct Config {
     mods: Vec<String>,
-    raw_mods: Vec<String>,
+    resourcepacks: Vec<String>,
+    shaderpacks: Vec<String>,
     dir: String,
 }
 

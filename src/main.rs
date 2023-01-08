@@ -5,13 +5,17 @@ mod config;
 mod modrinth;
 
 fn main() {
-    let reconfig = Confirm::with_theme(&ColorfulTheme::default())
-        .with_prompt("Do you want to configure?")
-        .interact()
-        .unwrap();
-
-    if reconfig {
+    if !Path::exists(Path::new("config/config.toml")) {
         config::reconfig();
+    } else {
+        let reconfig = Confirm::with_theme(&ColorfulTheme::default())
+            .with_prompt("Do you want to reconfigure?")
+            .interact()
+            .unwrap();
+
+        if reconfig {
+            config::reconfig();
+        }
     }
 
     let mut config = config::read();

@@ -18,7 +18,7 @@ fn main() {
         }
     }
 
-    let mut config = config::read();
+    let mut config = config::read().unwrap();
 
     config
         .mod_urls

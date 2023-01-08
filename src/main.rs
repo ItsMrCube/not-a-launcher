@@ -1,80 +1,59 @@
-use std::{error::Error, fs, path::Path};
+use dialoguer::{theme::ColorfulTheme, Confirm};
+use std::{fs, path::Path};
+use uuid::Uuid;
+mod config;
+mod modrinth;
 
-use serde::Deserialize;
+fn main() {
+    let reconfig = Confirm::with_theme(&ColorfulTheme::default())
+        .with_prompt("Do you want to configure?")
+        .interact()
+        .unwrap();
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let config: Config = {
-        let file = fs::read("config/mods.json")?;
-        serde_json::from_slice(file.as_slice())?
-    };
-
-    // Empty dir
-    for dir in ["mods", "resourcepacks", "shaderpacks"] {
-        let path = Path::new(&config.dir).join(dir);
-
-        fs::remove_dir_all(&path).ok();
-
-        fs::create_dir(&path).ok();
+    if reconfig {
+        config::reconfig();
     }
 
-    let mut i = 0;
+    let mut config = config::read();
 
-    // Download mods
-    for mod_name in &config.mods {
-        let version_url = format!("https://api.modrinth.com/v2/project/{mod_name}/version");
-        let versions: Vec<Version> = reqwest::blocking::get(&version_url)?.json()?;
-        let url = &versions[0]
-            .files
-            .iter()
-            .find(|v| v.primary)
-            .map(|v| &v.url)
-            .unwrap();
+    config
+        .mod_urls
+        .append(&mut modrinth::mod_to_url(config.mods, config.version));
 
-        write(format!("{}/mods/{}.jar", &config.dir, &i), &url)?;
+    download(
+        //
+        config.mod_urls,
+        &config.dir,
+        "mods",
+        "jar",
+    );
+    download(
+        //
+        config.resourcepack_urls,
+        &config.dir,
+        "resourcepacks",
+        "zip",
+    );
+    download(
+        //
+        config.shaderpacks_urls,
+        &config.dir,
+        "shaderpacks",
+        "zip",
+    );
+}
 
-        i += 1;
+fn download(urls: Vec<String>, dir: &str, sub_dir: &str, ext: &str) {
+    let path = Path::new(dir).join(sub_dir);
+
+    fs::remove_dir_all(&path).ok();
+    fs::create_dir(&path).ok();
+
+    for url in urls {
+        let response = reqwest::blocking::get(url).unwrap().bytes().unwrap();
+
+        let file_name = format!("{}.{}", Uuid::new_v4(), ext);
+
+        fs::write(path.join(file_name), response).unwrap();
     }
-
-    for url in &config.resourcepacks {
-        write(format!("{}/resourcepacks/{}.zip", &config.dir, &i), &url)?;
-
-        i += 1;
-    }
-
-    for url in &config.shaderpacks {
-        write(format!("{}/shaderpacks/{}.zip", &config.dir, &i), &url)?;
-
-        i += 1;
-    }
-
-    Ok(())
-}
-
-fn write(path: String, url: &str) -> Result<(), Box<dyn Error>> {
-    let mut response = reqwest::blocking::get(url)?;
-
-    let mut file = fs::File::create(path)?;
-
-    std::io::copy(&mut response, &mut file)?;
-
-    Ok(())
-}
-
-#[derive(Deserialize)]
-struct Config {
-    mods: Vec<String>,
-    resourcepacks: Vec<String>,
-    shaderpacks: Vec<String>,
-    dir: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct Version {
-    files: Vec<File>,
-}
-
-#[derive(Deserialize, Debug)]
-struct File {
-    url: String,
-    primary: bool,
 }

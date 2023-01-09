@@ -22,7 +22,15 @@ fn main() {
 
     config
         .mod_urls
-        .append(&mut modrinth::mod_to_url(config.mods, config.version));
+        .append(&mut modrinth::to_url(config.mods, &config.version));
+
+    config
+        .resourcepack_urls
+        .append(&mut modrinth::to_url(config.resourcepacks, &config.version));
+
+    config
+        .shaderpack_urls
+        .append(&mut modrinth::to_url(config.shaderpacks, &config.version));
 
     download(
         //
@@ -40,7 +48,7 @@ fn main() {
     );
     download(
         //
-        config.shaderpacks_urls,
+        config.shaderpack_urls,
         &config.dir,
         "shaderpacks",
         "zip",

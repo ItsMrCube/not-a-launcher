@@ -9,8 +9,12 @@ pub fn reconfig() {
 
         mods: ask_list("Mods", "mods"),
         mod_urls: ask_list("Mod URLs", "mod_urls"),
+
+        resourcepacks: ask_list("Resourcepacks", "resourcepacks"),
         resourcepack_urls: ask_list("Resourcepack URLs", "resourcepack_urls"),
-        shaderpacks_urls: ask_list("Shaderpack URLs", "shaderpacks_urls"),
+
+        shaderpacks: ask_list("Shaderpacks", "shaderpacks"),
+        shaderpack_urls: ask_list("Shaderpack URLs", "shaderpack_urls"),
     };
 
     let toml = toml::to_string(&config).unwrap();
@@ -31,8 +35,10 @@ fn ask(prompt: &str, prop: &str) -> String {
             "version" => config.version,
             "mods" => config.mods.join(" "),
             "mod_urls" => config.mod_urls.join(" "),
+            "resourcepacks" => config.resourcepacks.join(" "),
             "resourcepack_urls" => config.resourcepack_urls.join(" "),
-            "shaderpacks_urls" => config.shaderpacks_urls.join(" "),
+            "shaderpacks" => config.shaderpacks.join(" "),
+            "shaderpack_urls" => config.shaderpack_urls.join(" "),
             _ => panic!("Unknown property: {}", prop),
         },
         Err(_) => "".to_string(),
@@ -64,6 +70,10 @@ pub struct Config {
 
     pub mods: Vec<String>,
     pub mod_urls: Vec<String>,
+
+    pub resourcepacks: Vec<String>,
     pub resourcepack_urls: Vec<String>,
-    pub shaderpacks_urls: Vec<String>,
+
+    pub shaderpacks: Vec<String>,
+    pub shaderpack_urls: Vec<String>,
 }
